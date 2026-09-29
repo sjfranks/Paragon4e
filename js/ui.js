@@ -205,7 +205,7 @@ function powerCard(p, o = {}) {
 
 /* ---------- detail blocks for other entry types ---------- */
 function traitList(list) {
-  return (list || []).map(t => '<p><b>' + esc(t.name) + '.</b> ' + linkify(t.desc) + '</p>').join('');
+  return (list || []).map(t => '<div class="trait"><b>' + esc(t.name) + '</b>' + linkify(t.desc) + '</div>').join('');
 }
 function raceDetail(r, id) {
   const abil = r.abil.any ? '+2 to one ability score of your choice' :

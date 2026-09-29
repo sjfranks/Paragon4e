@@ -51,7 +51,7 @@ function applyTheme() {
   if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
   else document.documentElement.removeAttribute('data-theme');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#ffffff';
+  if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--hero').trim() || '#1d2137';
 }
 const viewKey = () => S.view + (S.view === 'char' ? ':' + S.tab : S.view === 'comp' ? ':' + S.comp.tab : '');
 let lastKey = null;
@@ -77,10 +77,11 @@ function viewHome() {
     '<span class="sigil ' + esc(e.role || '') + '">' + esc((e.name || '?').trim().charAt(0).toUpperCase() || '?') + '</span>' +
     '<span class="cm"><span class="cn">' + esc(e.name || 'Unnamed hero') + '</span><span class="cs">Level ' + e.level + ' ' + esc([e.race, e.cls].filter(Boolean).join(' ') || 'character') + '</span>' +
     '<span class="cx">' + (e.cls ? 'HP ' + e.hp + ' · AC ' + e.ac : 'Not finished') + '</span></span>' + IC.chev + '</button>').join('');
-  return topbar('', '<b class="wordmark">Paragon</b>', 'D&amp;D 4th Edition character builder',
+  return topbar('', '<b class="wordmark">Paragon<i>.</i></b>', '',
     '<button class="iconbtn" data-act="settings" aria-label="Settings">' + IC.gear + '</button>') +
-    '<main class="no-tabs">' +
-    '<div class="row-gap" style="margin:4px 0 14px"><button class="btn primary" data-act="newChar">' + IC.plus + 'New character</button><button class="btn" data-act="importChar">Import</button></div>' +
+    '<section class="home-hero"><div class="inner"><h1>Your D&amp;D 4th Edition heroes</h1><p>Build a character level by level, see every number worked out, and track hit points and powers at the table.</p>' +
+    '<div class="row-gap"><button class="btn primary" data-act="newChar">' + IC.plus + 'New character</button><button class="btn ghost" data-act="importChar">Import</button></div></div></section>' +
+    '<main class="no-tabs">' + (S.index.length ? '<h2 class="sec-title" style="padding-top:4px">Characters</h2>' : '') +
     (S.index.length ? '<div class="charlist">' + cards + '</div>' : '<div class="card"><div class="pad"><p style="margin-top:10px">No characters yet. Tap New character to start: choose a race, a class, ability scores, skills, feats and powers, level by level.</p></div></div>') +
     (!Store.ok ? '<div class="todo-box"><b>This browser isn\'t saving.</b> Private browsing or blocked storage stops characters being kept. Use Export in each character\'s menu to keep a copy.</div>' : '') +
     '<h2 class="sec-title">Compendium</h2><div class="navgrid">' +
@@ -100,15 +101,17 @@ function charSub(c) {
 function viewChar() {
   const c = S.c, ch = S.cur;
   const cur = D4.curHP(c);
-  const strip = '<div class="strip">' +
-    ['AC', 'Fort', 'Ref', 'Will'].map(d => '<button data-act="breakdown" data-key="' + d + '"><b>' + c.def[d] + '</b><span>' + d + '</span></button>').join('') +
-    '<button class="hpcell' + (cur <= c.bloodied ? ' bloodied' : '') + '" data-act="tab" data-tab="play"><b class="num">' + cur + '/' + c.hp + '</b><span>HP</span></button>' +
-    '<button data-act="breakdown" data-key="speed"><b>' + c.speed + '</b><span>Speed</span></button></div>';
+  const temp = +ch.play.temp || 0, pct = Math.max(0, Math.min(100, cur / (c.hp || 1) * 100)), tpct = Math.min(100 - pct, temp / (c.hp || 1) * 100);
+  const strip = '<section class="band"><div class="band-inner"><div class="defs">' +
+    ['AC', 'Fort', 'Ref', 'Will'].map(d => '<button class="def" data-act="breakdown" data-key="' + d + '"><b>' + c.def[d] + '</b><span>' + d + '</span></button>').join('') + '</div>' +
+    '<button class="hpline" data-act="tab" data-tab="play"><span class="hptop"><b>' + cur + '</b><span>/ ' + c.hp + ' hit points' + (temp ? ' +' + temp + ' temp' : '') + '</span>' +
+    '<em>Surges ' + (c.surges - ch.play.surgesUsed) + '/' + c.surges + ' · Speed ' + c.speed + '</em></span>' +
+    '<span class="meter' + (cur <= c.bloodied ? ' low' : '') + '"><i style="width:' + pct + '%"></i><i class="temp" style="width:' + tpct + '%"></i></span></button></div></section>';
   const body = { build: viewBuild, sheet: viewSheet, powers: viewPowers, gear: viewGear, play: viewPlay }[S.tab]();
   return topbar('<button class="iconbtn" data-act="home" aria-label="All characters">' + IC.back + '</button>',
     '<b>' + esc(ch.name || 'Unnamed hero') + '</b>', charSub(c),
     '<button class="iconbtn" data-act="charMenu" aria-label="Character menu">' + IC.more + '</button>') +
-    '<main>' + (c.cls ? strip : '') + body + '</main>' +
+    (c.cls ? strip : '') + '<main>' + body + '</main>' +
     '<nav class="tabbar" aria-label="Character sections">' + TABS.map(([t, n, ic]) => '<button data-act="tab" data-tab="' + t + '"' + (S.tab === t ? ' aria-current="page"' : '') + '>' + ic + n + '</button>').join('') + '</nav>';
 }
 
@@ -135,7 +138,7 @@ function viewBuild() {
   for (let L = 1; L <= c.lvl; L++) {
     const rows = buildRows(L);
     if (!rows) continue;
-    out += '<section class="card lvl" id="lvl-' + L + '"><div class="lvl-head"><span class="lvl-num">' + L + '</span><span class="label">Level ' + L + (L === 11 ? ' · paragon tier' : L === 21 ? ' · epic tier' : '') + '</span><span class="muted small num">' + D4.XP[L].toLocaleString() + ' XP</span></div><ul class="rows">' + rows + '</ul></section>';
+    out += '<section class="card lvl" id="lvl-' + L + '"><div class="lvl-head"><span class="lvl-num">' + L + '</span><span class="lvl-t">Level ' + L + '<small>' + (L === 1 ? 'Creating your character' : (L === 11 ? 'Paragon tier begins · ' : L === 21 ? 'Epic tier begins · ' : '') + D4.XP[L].toLocaleString() + ' XP') + '</small></span></div><ul class="rows">' + rows + '</ul></section>';
   }
   out += '<section class="card"><h2>Level</h2><div class="pad"><div class="row-gap" style="align-items:center">' +
     '<span class="stepper"><button data-act="level" data-d="-1" aria-label="Lower level"' + (c.lvl <= 1 ? ' disabled' : '') + '>−</button><b>' + c.lvl + '</b><button data-act="level" data-d="1" aria-label="Raise level"' + (c.lvl >= 30 ? ' disabled' : '') + '>+</button></span>' +
@@ -165,10 +168,10 @@ function buildRows(L) {
     if (cl && cl.options) cl.options.forEach(o => {
       h += optChips('setClsOpt', { key: o.id }, Object.fromEntries(Object.entries(o.opts).map(([k, v]) => [k, v.name])), ch.clsOpt[o.id], o.label);
       const sel = o.opts[ch.clsOpt[o.id]];
-      if (sel) h += '<li><p class="small" style="padding:0 14px 10px;margin:0;color:var(--ink-2)">' + linkify(sel.desc) + '</p></li>';
+      if (sel) h += '<li><p class="opt-note">' + linkify(sel.desc) + '</p></li>';
     });
     if (cl && cl.builds) h += optChips('setBuild', {}, Object.fromEntries(Object.entries(cl.builds).map(([k, v]) => [k, v.name])), ch.build, 'Suggested build (optional)') +
-      (ch.build && cl.builds[ch.build] ? '<li><p class="small" style="padding:0 14px 10px;margin:0;color:var(--ink-2)">Put your best scores in ' + esc(cl.builds[ch.build].abil) + '. ' + esc(cl.builds[ch.build].desc) + '</p></li>' : '');
+      (ch.build && cl.builds[ch.build] ? '<li><p class="opt-note">Put your best scores in ' + esc(cl.builds[ch.build].abil) + '. ' + esc(cl.builds[ch.build].desc) + '</p></li>' : '');
     const pc = D4.pointCost(ch.base);
     h += row('editAbilities', {}, 'Ability scores', D4.ABILS.map(a => D4.ABIL[a].short + ' ' + c.score[a]).join(' · '),
       esc(ch.abilMethod === 'pointbuy' ? 'Point buy: ' + pc.spent + ' of ' + pc.budget + ' points' : ch.abilMethod === 'array' ? 'Standard array' : 'Rolled or entered by hand'),
@@ -232,48 +235,44 @@ function detailsCard() {
 /* ---------- Sheet tab ---------- */
 function viewSheet() {
   const c = S.c, ch = S.cur;
-  if (!c.cls) return '<div class="card"><div class="pad"><p style="margin-top:10px">Choose a race and class on the Build tab to see your character sheet.</p><button class="btn primary" data-act="tab" data-tab="build">Go to Build</button></div></div>';
-  const tile = (key, label, val, sub) => '<button class="tile" data-act="breakdown" data-key="' + key + '"><b class="num">' + val + '</b><span>' + label + '</span>' + (sub != null ? '<i>' + sub + '</i>' : '') + '</button>';
-  let h = '<section class="card"><h2>Defenses</h2><div class="tiles">' + ['AC', 'Fort', 'Ref', 'Will'].map(d => tile(d, d === 'AC' ? 'Armor Class' : D4.DEFENSES[d].name, c.def[d])).join('') + '</div></section>';
-  h += '<section class="card"><h2>Hit points</h2><dl class="kv">' +
-    [['hp', 'Maximum hit points', c.hp], [null, 'Bloodied', c.bloodied], ['surgeValue', 'Healing surge value', c.surgeValue], ['surges', 'Healing surges per day', c.surges],
-      ['save', 'Saving throw bonus', D4.fmt(c.save) + (c.saveNotes.length ? ' (' + c.saveNotes.join('; ') + ')' : '')]]
-      .map(([k, l, v]) => '<dt>' + (k ? '<button class="linkbtn" style="color:inherit;font-weight:400" data-act="breakdown" data-key="' + k + '">' + esc(l) + '</button>' : esc(l)) + '</dt><dd>' + esc(v) + '</dd>').join('') +
-    (c.resist.length ? '<dt>Resistances</dt><dd>' + esc(c.resist.map(r => r.t + ' ' + r.v).join(', ')) + '</dd>' : '') + '</dl></section>';
-  h += '<section class="card"><h2>Movement and senses</h2><dl class="kv">' +
-    '<dt><button class="linkbtn" style="color:inherit;font-weight:400" data-act="breakdown" data-key="init">Initiative</button></dt><dd>' + D4.fmt(c.init) + '</dd>' +
-    '<dt><button class="linkbtn" style="color:inherit;font-weight:400" data-act="breakdown" data-key="speed">Speed</button></dt><dd>' + c.speed + ' squares</dd>' +
-    '<dt>Size</dt><dd>' + esc(c.size) + '</dd><dt>Vision</dt><dd>' + esc(c.vision) + '</dd>' +
-    '<dt>Passive Insight</dt><dd>' + c.passive.insight + '</dd><dt>Passive Perception</dt><dd>' + c.passive.perception + '</dd></dl></section>';
-  h += '<section class="card"><h2>Ability scores</h2><div class="tiles six">' + D4.ABILS.map(a => '<button class="tile" data-act="abilInfo" data-ab="' + a + '"><b class="num">' + c.score[a] + '</b><span>' + D4.ABIL[a].name + '</span><i>' + D4.fmt(c.mod[a]) + ' (' + D4.fmt(c.mod[a] + c.half) + ')</i></button>').join('') + '</div>' +
-    '<p class="small muted" style="padding:0 14px 12px;margin:0">Modifier, and in brackets modifier + one-half level (for ability checks).</p></section>';
-  h += '<section class="card"><h2>Skills</h2><ul class="rows">' + Object.keys(D4.SKILLS).map(s => {
+  if (!c.cls) return '<div class="card"><div class="pad" style="padding-top:16px"><p>Choose a race and class on the Build tab to see your character sheet.</p><button class="btn primary" data-act="tab" data-tab="build">Go to Build</button></div></div>';
+  const vital = (key, label, val) => '<button class="vital"' + (key ? ' data-act="breakdown" data-key="' + key + '"' : '') + '><b>' + val + '</b><span>' + label + '</span></button>';
+  let h = '<section class="card"><h2>Vitals</h2><div class="vitals">' +
+    vital('hp', 'Max HP', c.hp) + vital(null, 'Bloodied', c.bloodied) + vital('surgeValue', 'Surge value', c.surgeValue) +
+    vital('surges', 'Surges / day', c.surges) + vital('init', 'Initiative', D4.fmt(c.init)) + vital('speed', 'Speed', c.speed) + '</div>' +
+    '<div class="facts"><span>Saves <b>' + D4.fmt(c.save) + '</b>' + (c.saveNotes.length ? ' (' + esc(c.saveNotes.join('; ')) + ')' : '') + '</span>' +
+    '<span>Passive Insight <b>' + c.passive.insight + '</b></span><span>Passive Perception <b>' + c.passive.perception + '</b></span>' +
+    '<span>' + esc(c.size) + ', ' + esc(c.vision.toLowerCase()) + ' vision</span>' +
+    (c.resist.length ? '<span>Resist <b>' + esc(c.resist.map(r => r.v + ' ' + r.t.toLowerCase()).join(', ')) + '</b></span>' : '') + '</div></section>';
+  h += '<section class="card"><h2>Abilities</h2><div class="abils">' + D4.ABILS.map(a => '<button class="abil" data-act="abilInfo" data-ab="' + a + '"><span class="ab">' + D4.ABIL[a].short.toUpperCase() + '</span><b>' + D4.fmt(c.mod[a]) + '</b><i>' + c.score[a] + '</i></button>').join('') + '</div></section>';
+  h += '<section class="card"><h2>Skills</h2><div class="skills2">' + Object.keys(D4.SKILLS).map(s => {
     const sk = c.skills[s];
-    return '<li><button class="rowbtn" data-act="skillInfo" data-skill="' + s + '" style="min-height:44px;padding:8px 14px"><span class="rmain"><span class="rval" style="font-weight:' + (sk.trained ? 700 : 500) + '">' + esc(D4.SKILLS[s].name) + (sk.trained ? '<span class="skill-t">TRAINED</span>' : '') + '</span><span class="rsub">' + esc(D4.ABIL[D4.SKILLS[s].ab].short) + (D4.SKILLS[s].armor && c.acp ? ', armor penalty' : '') + '</span></span><span class="rnum">' + D4.fmt(sk.v) + '</span></button></li>';
-  }).join('') + '</ul></section>';
-  const basics = D4.basicAttacks(c);
-  h += '<section class="card"><h2>Basic attacks</h2><div class="pad">' + basics.map(p => '<div style="margin-top:6px"><b>' + esc(p.n) + '</b>' + calcBlock(c, p) + '</div>').join('') + '</div></section>';
-  if (c.race) h += '<section class="card"><h2>Racial traits: ' + esc(c.race.name) + '</h2><div class="pad">' + traitList(c.race.traits) + '</div></section>';
-  h += '<section class="card"><h2>Class features: ' + esc(c.cls.name) + '</h2><div class="pad">' + traitList(c.cls.features) +
-    (c.cls.options || []).map(o => { const v = o.opts[ch.clsOpt[o.id]]; return v ? '<p><b>' + esc(v.name) + '.</b> ' + linkify(v.desc) + '</p>' : ''; }).join('') + '</div></section>';
-  if (ch.path) h += '<section class="card"><h2>Paragon path: ' + esc(pathName()) + '</h2><div class="pad">' + (ch.path !== 'custom' && D4.paths[ch.path] ? '<p>' + esc(D4.paths[ch.path].s) + '</p>' : '') + (ch.pathText ? '<p style="white-space:pre-wrap">' + linkify(ch.pathText) + '</p>' : '<p class="small muted">Paste your path\'s features from the 4e Database to keep them here.</p>') + '<button class="linkbtn" data-act="pickPath">Change or paste features</button></div></section>';
-  if (ch.destiny) h += '<section class="card"><h2>Epic destiny: ' + esc(destinyName()) + '</h2><div class="pad">' + (ch.destiny !== 'custom' && D4.destinies[ch.destiny] ? '<p>' + esc(D4.destinies[ch.destiny].s) + '</p>' : '') + (ch.destinyText ? '<p style="white-space:pre-wrap">' + linkify(ch.destinyText) + '</p>' : '') + '<button class="linkbtn" data-act="pickDestiny">Change or paste features</button></div></section>';
-  h += '<section class="card"><h2>Feats</h2><ul class="rows">' + c.feats.map(f => '<li><button class="rowbtn" data-act="showFeat" data-id="' + esc(f.id) + '"><span class="rmain"><span class="rval">' + esc(f.feat.n) + (f.choice ? ' (' + esc(Array.isArray(f.choice) ? f.choice.join(', ') : choiceName(f.feat, f.choice)) + ')' : '') + '</span><span class="rsub">' + esc(f.feat.s || '') + (f.bonus ? ' <span class="badge">' + esc(f.bonus) + '</span>' : '') + '</span></span>' + IC.chev.replace('<svg', '<svg class="chev"') + '</button></li>').join('') + (c.feats.length ? '' : '<li><p class="pad muted">No feats chosen yet.</p></li>') + '</ul></section>';
+    return '<button class="sk' + (sk.trained ? ' tr' : '') + '" data-act="skillInfo" data-skill="' + s + '"><span class="skn">' + esc(D4.SKILLS[s].name) + '</span><b>' + D4.fmt(sk.v) + '</b></button>';
+  }).join('') + '</div><p class="small muted" style="padding:0 18px 14px;margin:0">Bold with a dot: trained. Tap a skill for what it does.</p></section>';
+  h += '<section class="card"><h2>Basic attacks</h2><div class="pad">' + D4.basicAttacks(c).map(p => '<div class="label" style="margin-top:6px">' + esc(p.n) + '</div>' + calcBlock(c, p)).join('') + '</div></section>';
+  h += '<section class="card"><h2>Feats</h2><ul class="rows">' + c.feats.map(f => '<li><button class="rowbtn" data-act="showFeat" data-id="' + esc(f.id) + '"><span class="rmain"><span class="rval">' + esc(f.feat.n) + (f.choice ? ' (' + esc(Array.isArray(f.choice) ? f.choice.join(', ') : choiceName(f.feat, f.choice)) + ')' : '') + '</span><span class="rsub">' + esc(f.feat.s || '') + (f.bonus ? ' <span class="badge">' + esc(f.bonus) + '</span>' : '') + '</span></span>' + IC.chev.replace('<svg', '<svg class="chev"') + '</button></li>').join('') + (c.feats.length ? '' : '<li><p class="pad muted" style="padding-top:4px">No feats chosen yet.</p></li>') + '</ul></section>';
+  h += '<h2 class="sec-title">Reference</h2>';
+  const fold = (title, note, inner) => '<details class="fold"><summary>' + esc(title) + (note ? '<small>' + esc(note) + '</small>' : '') + '</summary>' + inner + '</details>';
+  if (c.race) h += fold('Racial traits', c.race.name, '<div class="pad">' + traitList(c.race.traits) + '</div>');
+  h += fold('Class features', c.cls.name, '<div class="pad">' + traitList(c.cls.features) +
+    (c.cls.options || []).map(o => { const v = o.opts[ch.clsOpt[o.id]]; return v ? '<div class="trait"><b>' + esc(v.name) + '</b>' + linkify(v.desc) + '</div>' : ''; }).join('') + '</div>');
+  if (ch.path) h += fold('Paragon path', pathName(), '<div class="pad">' + (ch.path !== 'custom' && D4.paths[ch.path] ? '<p>' + esc(D4.paths[ch.path].s) + '</p>' : '') + (ch.pathText ? '<p style="white-space:pre-wrap">' + linkify(ch.pathText) + '</p>' : '<p class="small muted">Paste your path\'s features from the 4e Database to keep them here.</p>') + '<button class="linkbtn" data-act="pickPath">Change or paste features</button></div>');
+  if (ch.destiny) h += fold('Epic destiny', destinyName(), '<div class="pad">' + (ch.destiny !== 'custom' && D4.destinies[ch.destiny] ? '<p>' + esc(D4.destinies[ch.destiny].s) + '</p>' : '') + (ch.destinyText ? '<p style="white-space:pre-wrap">' + linkify(ch.destinyText) + '</p>' : '') + '<button class="linkbtn" data-act="pickDestiny">Change or paste features</button></div>');
   const weps = [...c.prof.weapons].map(w => D4.WEAPON_CATS[w] || (D4.items[w] || {}).n || w).concat([...c.prof.groups].map(g => g + ' (military and superior)'));
-  h += '<section class="card"><h2>Proficiencies and languages</h2><dl class="kv">' +
+  h += fold('Proficiencies and languages', '', '<dl class="kv">' +
     '<dt>Armor</dt><dd>' + esc([...c.prof.armor].join(', ') || 'none') + '</dd>' +
     '<dt>Shields</dt><dd>' + esc([...c.prof.shields].join(', ') || 'none') + '</dd>' +
     '<dt>Weapons</dt><dd>' + esc(weps.join(', ') || 'none') + '</dd>' +
     '<dt>Implements</dt><dd>' + esc([...c.prof.implements].join(', ') || 'none') + '</dd>' +
-    '<dt>Languages</dt><dd>' + esc(c.languages.join(', ')) + '</dd></dl></section>';
+    '<dt>Languages</dt><dd>' + esc(c.languages.join(', ')) + '</dd></dl>');
   h += customModsCard();
   return h;
 }
 function customModsCard() {
   const ch = S.cur;
-  return '<section class="card"><h2>Your own bonuses</h2><div class="pad"><p class="small muted">Add bonuses from items, powers or rules not built in (for example +1 item bonus to Will). They are added to the sheet automatically.</p>' +
+  return '<details class="fold"' + ((ch.mods || []).length ? ' open' : '') + '><summary>Your own bonuses<small>' + ((ch.mods || []).length || 'none') + '</small></summary><div class="pad"><p class="small muted">Add bonuses from items, powers or rules not built in (for example +1 item bonus to Will). They are added to the sheet automatically.</p>' +
     (ch.mods || []).map((m, i) => '<div class="row-gap" style="align-items:center;margin-bottom:6px"><button class="chip" data-act="toggleMod" data-i="' + i + '" aria-pressed="' + (m.on !== false) + '">' + esc(D4.fmt(+m.v) + ' ' + modTargetName(m.t) + (m.type && m.type !== 'untyped' ? ' (' + m.type + ')' : '')) + '</button><span class="small muted" style="flex:1">' + esc(m.note || '') + '</span><button class="iconbtn" data-act="delMod" data-i="' + i + '" aria-label="Remove">' + IC.trash + '</button></div>').join('') +
-    '<button class="btn small" data-act="addMod">' + IC.plus + 'Add a bonus</button></div></section>';
+    '<button class="btn small" data-act="addMod">' + IC.plus + 'Add a bonus</button></div></details>';
 }
 const MOD_TARGETS = { AC: 'AC', Fort: 'Fortitude', Ref: 'Reflex', Will: 'Will', def: 'all defenses', hp: 'maximum hit points', surges: 'healing surges per day', surgeValue: 'healing surge value', init: 'initiative', speed: 'speed', save: 'saving throws', atk: 'attack rolls', dmg: 'damage rolls', 'dmg.melee': 'melee damage', 'dmg.ranged': 'ranged damage', skills: 'all skill checks' };
 Object.keys(D4.SKILLS).forEach(s => { MOD_TARGETS['skill:' + s] = D4.SKILLS[s].name; });
@@ -348,14 +347,14 @@ function viewPlay() {
   let h = '<section class="card hpcard"><div class="hpbig"><b class="num">' + cur + '</b><span class="num">/ ' + c.hp + '</span>' + (temp ? '<em class="num">+' + temp + ' temp</em>' : '') +
     (dead ? ' <span class="status-pill">dead</span>' : dying ? ' <span class="status-pill">dying</span>' : cur <= c.bloodied ? ' <span class="status-pill">bloodied</span>' : '') + '</div>' +
     '<div class="bar' + (cur <= c.bloodied ? ' bloodied' : '') + '"><i style="width:' + pct + '%"></i><i class="temp" style="width:' + tpct + '%"></i></div>' +
-    '<div class="row-gap"><button class="btn danger" data-act="hpInput" data-mode="damage">Damage</button><button class="btn" data-act="hpInput" data-mode="heal">Heal</button><button class="btn" data-act="hpInput" data-mode="temp">Temp HP</button></div>' +
+    '<div class="btn-grid three"><button class="btn danger" data-act="hpInput" data-mode="damage">Damage</button><button class="btn" data-act="hpInput" data-mode="heal">Heal</button><button class="btn" data-act="hpInput" data-mode="temp">Temp HP</button></div>' +
     '<p class="small muted" style="margin:10px 0 0">Bloodied at ' + c.bloodied + '. Surge value ' + c.surgeValue + '.</p></section>';
   if (dying) h += '<section class="card"><h2>Death saving throws</h2><div class="pad"><p class="small">At the end of each turn roll a d20: under 10 is a failure, 20 lets you spend a healing surge. Three failures and you die. You also die at −' + c.bloodied + ' hit points.</p><div class="pips">' +
     [0, 1, 2].map(i => '<button class="pip" data-act="deathFail" data-i="' + i + '" aria-pressed="' + (i < pl.deathFails) + '" aria-label="Failure ' + (i + 1) + '"></button>').join('') + '</div></div></section>';
   h += '<section class="card"><h2>Healing and resources</h2><dl class="kv">' +
     '<dt>Healing surges</dt><dd><span class="stepper"><button data-act="surgeAdj" data-d="1" aria-label="Use a surge without healing"' + (surgesLeft <= 0 ? ' disabled' : '') + '>−</button><b>' + surgesLeft + '/' + c.surges + '</b><button data-act="surgeAdj" data-d="-1" aria-label="Regain a surge"' + (pl.surgesUsed <= 0 ? ' disabled' : '') + '>+</button></span></dd>' +
     '<dt>Action points</dt><dd><span class="stepper"><button data-act="apAdj" data-d="-1" aria-label="Spend an action point"' + (pl.ap <= 0 ? ' disabled' : '') + '>−</button><b>' + pl.ap + '</b><button data-act="apAdj" data-d="1" aria-label="Gain an action point">+</button></span></dd></dl>' +
-    '<div class="pad" style="padding-top:10px"><div class="row-gap"><button class="btn" data-act="spendSurge"' + (surgesLeft <= 0 ? ' disabled' : '') + '>Spend a surge (+' + c.surgeValue + ')</button>' +
+    '<div class="pad" style="padding-top:14px"><div class="btn-grid"><button class="btn" data-act="spendSurge"' + (surgesLeft <= 0 ? ' disabled' : '') + '>Spend a surge (+' + c.surgeValue + ')</button>' +
     '<button class="btn" data-act="secondWind"' + (pl.secondWind || surgesLeft <= 0 ? ' disabled' : '') + '>' + (pl.secondWind ? 'Second wind used' : 'Second wind') + '</button></div>' +
     '<p class="small muted" style="margin:8px 0 0">Second wind: ' + (c.race && c.race.flags && c.race.flags.secondWindMinor ? 'minor action (dwarf)' : 'standard action') + ', once per encounter. Spend a surge, and +2 to all defenses until the start of your next turn.</p></div></section>';
   h += '<section class="card"><h2>Conditions</h2><div class="pad"><div class="row-gap" style="margin-bottom:8px">' +
@@ -367,7 +366,7 @@ function viewPlay() {
     const n = D4.usesOf(c, x.p), used = pl.used[x.id] || 0;
     return '<button class="use ' + USE_CLASS(Object.assign({}, x.p, { u: x.useOverride || x.p.u })) + '" data-act="cycleUse" data-key="' + esc(x.id) + '" data-n="' + n + '" aria-pressed="' + (used >= n) + '">' + esc(x.p.n) + (n > 1 ? ' ' + (n - used) + '/' + n : '') + '</button>';
   }).join('') : '<span class="muted small">No encounter or daily powers yet.</span>') + '</div><p class="small muted" style="margin:8px 0 0">Tap to mark a power as used. Details are on the Powers tab.</p></div></section>';
-  h += '<section class="card"><h2>Rest</h2><div class="pad"><div class="row-gap"><button class="btn" data-act="rest" data-kind="short">Short rest</button><button class="btn" data-act="rest" data-kind="extended">Extended rest</button><button class="btn" data-act="rest" data-kind="milestone">Milestone</button></div>' +
+  h += '<section class="card"><h2>Rest</h2><div class="pad"><div class="btn-grid three"><button class="btn" data-act="rest" data-kind="short">Short rest</button><button class="btn" data-act="rest" data-kind="extended">Extended rest</button><button class="btn" data-act="rest" data-kind="milestone">Milestone</button></div>' +
     '<p class="small muted" style="margin:8px 0 0">Short rest (5 minutes): encounter powers and second wind recharge. Extended rest (6 hours): full hit points, surges and daily powers; action points reset to 1. Milestone (every two encounters): +1 action point.</p></div></section>';
   return h;
 }
